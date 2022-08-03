@@ -1,0 +1,13 @@
+dist/
+__pytcache__/**
+*.pyc
+venv/
+
+.idea/
+.vscode/
+
+MANIFEST
+
+build/
+dist/
+*.egg-info/
