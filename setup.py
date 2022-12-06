@@ -3,7 +3,7 @@ from distutils.core import setup
 setup(
     name="potee",
     packages=["potee"],
-    version="0.1",
+    version="0.4",
     license="MIT",
     description="A package to simplify the process of writing checkers for the Poteet platform",
     author="Ivan Hahanov",
@@ -13,10 +13,6 @@ setup(
         "checkers",
         "security",
         "paltform",
-    ],
-    install_requires=[
-        "validators",
-        "beautifulsoup4",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",  # Chose either "3 - Alpha", "4 - Beta" or "5 - Production/Stable" as the current state of your package
