@@ -1,6 +1,9 @@
 from collections import defaultdict
+from pickle import load
 from .testing import ServiceTesting
 import sys
+from aiohttp import ClientSession
+import asyncio
 
 
 class ServiceBase:
@@ -34,22 +37,31 @@ class ServiceBase:
 
         return decorator
 
+    @staticmethod
+    def load_data():
+        return {
+            "urls": {i: "localhost" for i in range(10)},
+            "values": {i: "123" for i in range(10)},
+            "flags": {i: "qwe" for i in range(10)},
+        }
+
     def parce_args(self):
         action = sys.argv[1]
-        if len(sys.argv) == 3:
-            return self.functions[action]["default"](sys.argv[2])
-        elif len(sys.argv) == 4:
-            return self.functions[action][sys.argv[3]](sys.argv[2])
-        elif len(sys.argv) == 5:
-            return self.functions[action][sys.argv[3]](sys.argv[2], sys.argv[4])
+        name = "default"
+        if len(sys.argv) >= 3:
+            name = sys.argv[2]
+
+        func = self.functions[action][name]
+        return asyncio.run(func(self.load_data()))
 
     def run(self):
         if sys.argv[1] == "test":
             ServiceTesting().run(self.functions)
             return
-            
-        result = self.parce_args()
-        if not result:
-            print(0, end="")
-        else:
-            print(result, end="")
+
+        print(self.parce_args())
+        # result = self.parce_args()
+        # if not result:
+        #     print(0, end="")
+        # else:
+        #     print(result, end="")
