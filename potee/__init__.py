@@ -1,2 +1,2 @@
-from .main import ServiceBase
+from .main import Checker
 from .testing import ServiceTesting

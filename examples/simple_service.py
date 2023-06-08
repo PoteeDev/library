@@ -1,11 +1,15 @@
 from flask import Flask, request
 
 app = Flask(__name__)
+import sys, random, time, requests
+
 
 fake_db = list()
 
 @app.route("/ping")
 def ping():
+    wait = random.randint(1,20)/10
+    time.sleep(wait)
     return "pong"
 
 @app.route("/get/<_id>")
