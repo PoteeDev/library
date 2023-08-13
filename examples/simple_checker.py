@@ -1,25 +1,38 @@
-
 from potee import ServiceBase, ServiceTesting
 import requests
+from aiohttp import ClientSession
+import asyncio
+
 srv = ServiceBase()
 
+
 @srv.ping
-def comment(host):
-    return requests.get(f"http://{host}:5000/ping").text
+@srv.http
+async def comment(s, url):
+    r = await s.get(f"http://{url}:5000/ping")
+    return await r.text()
+
 
 @srv.get("example")
-def get_auth(host, _id):
-    return requests.get(f"http://{host}:5000/get/{_id}").text
+async def get_auth(s, url, value):
+    r = await s.get(f"http://{url}:5000/get/{value}")
+    return await r.text()
+
 
 @srv.put("example")
-def put_auth(host, flag):
-    return requests.post(f"http://{host}:5000/put", data={"flag": flag}).text
+async def put_auth(s, url, flag):
+    r = await s.post(f"http://{url}:5000/put", data={"flag": flag})
+    return await r.text()
+
 
 @srv.exploit("example")
-def exploit(host):
-    answer =  requests.get(f"http://{host}:5000/exploit").text
+def exploit(data):
+    answer = requests.get(f"http://{host}:5000/exploit").text
     if answer == "yes":
         return True
+
+
+
 
 if __name__ == "__main__":
     srv.run()

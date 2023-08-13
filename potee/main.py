@@ -1,55 +1,95 @@
 from collections import defaultdict
+from typing import Any
 from .testing import ServiceTesting
 import sys
+from aiohttp import ClientSession
+import asyncio
+import json
 
 
-class ServiceBase:
-    def __init__(self):
-        self.functions = defaultdict(dict)
+class Checker:
+    def __init__(self) -> None:
+        self.checkers = defaultdict(dict)
+        self.filename = ""
 
-    def get(self, _name):
-        def wrapper(f):
-            return self.action("get", _name)(f)
+    def ping(self, method):
+        def inner(f):
+            self.register(f, "ping", method, "default")
 
-        return wrapper
+        return inner
 
-    def put(self, _name):
-        def wrapper(f):
-            return self.action("put", _name)(f)
+    def get(self, name, method):
+        def inner(f):
+            self.register(f, "get", method, name)
 
-        return wrapper
+        return inner
 
-    def exploit(self, _name):
-        def wrapper(f):
-            return self.action("exploit", _name)(f)
+    def put(self, name, method):
+        def inner(f):
+            self.register(f, "put", method, name)
 
-        return wrapper
+        return inner
 
-    def ping(self, f):
-        return self.action("ping")(f)
+    def exploit(self, name, method):
+        def inner(f):
+            self.register(f, "exploit", method, name)
 
-    def action(self, action, _name="default"):
-        def decorator(f):
-            self.functions[action][_name] = f
+        return inner
+
+    def register(self, f, action, method, name):
+        self.checkers[action][name] = (getattr(self, method), (f, action))
+
+    def load_data(self):
+        with open(self.filename) as f:
+            return json.loads(f.read())
+
+    @staticmethod
+    async def add_id(f, i, *args):
+        result = await f(*args)
+        return {"status": 0, "id": i, "answer": result}
+
+    def http(self, f, action):
+        data = self.load_data()
+        tasks = []
+
+        async def decorator():
+            async with ClientSession() as session:
+                for host in data:
+                    if action == "ping" or action == "exploit":
+                        func = self.add_id(f, host.get("id"), session, host.get("host"))
+                    elif action == "put":
+                        func = self.add_id(
+                            f,
+                            host.get("id"),
+                            session,
+                            host.get("host"),
+                            host.get("flag"),
+                        )
+                    elif action == "get":
+                        func = self.add_id(
+                            f,
+                            host.get("id"),
+                            session,
+                            host.get("host"),
+                            host.get("value"),
+                        )
+
+                    task = asyncio.ensure_future(func)
+                    tasks.append(task)
+
+                responses = await asyncio.gather(*tasks, return_exceptions=True)
+                return list(map(str, responses))
 
         return decorator
 
-    def parce_args(self):
-        action = sys.argv[1]
-        if len(sys.argv) == 3:
-            return self.functions[action]["default"](sys.argv[2])
-        elif len(sys.argv) == 4:
-            return self.functions[action][sys.argv[3]](sys.argv[2])
-        elif len(sys.argv) == 5:
-            return self.functions[action][sys.argv[3]](sys.argv[2], sys.argv[4])
-
     def run(self):
-        if sys.argv[1] == "test":
-            ServiceTesting().run(self.functions)
-            return
-            
-        result = self.parce_args()
-        if not result:
-            print(0, end="")
-        else:
-            print(result, end="")
+        action = sys.argv[1]
+        self.filename = sys.argv[len(sys.argv) - 1]
+        name = "default"
+        if len(sys.argv) > 3:
+            name = sys.argv[2]
+        wrap, data = self.checkers[action][name]
+        results = asyncio.run(wrap(*data)())
+        print(json.dumps(results))
+        # print(self.checkers)
+        # print(asyncio.run(self.checkers[0]()))
