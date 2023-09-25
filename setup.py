@@ -3,7 +3,7 @@ from distutils.core import setup
 setup(
     name="potee",
     packages=["potee"],
-    version="0.4",
+    version="0.5",
     license="MIT",
     description="A package to simplify the process of writing checkers for the Poteet platform",
     author="Ivan Hahanov",

@@ -45,7 +45,10 @@ class Checker:
 
     @staticmethod
     async def add_id(f, i, *args):
-        result = await f(*args)
+        try:
+            result = await f(*args)
+        except Exception as e:
+            return {"status": 1, "id": i, "answer": str(e)}
         return {"status": 0, "id": i, "answer": result}
 
     def http(self, f, action):
@@ -78,18 +81,21 @@ class Checker:
                     tasks.append(task)
 
                 responses = await asyncio.gather(*tasks, return_exceptions=True)
-                return list(map(str, responses))
+                return responses
 
         return decorator
 
     def run(self):
         action = sys.argv[1]
+        if action == "test":
+            testing = ServiceTesting()
+            self.filename = "hosts.json"
+            testing.run(self.checkers)
+            return
         self.filename = sys.argv[len(sys.argv) - 1]
         name = "default"
         if len(sys.argv) > 3:
             name = sys.argv[2]
         wrap, data = self.checkers[action][name]
         results = asyncio.run(wrap(*data)())
-        print(json.dumps(results))
-        # print(self.checkers)
-        # print(asyncio.run(self.checkers[0]()))
+        print(json.dumps(list(results)))

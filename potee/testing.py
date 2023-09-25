@@ -1,7 +1,8 @@
 import random
 from string import ascii_letters
 import logging
-
+import asyncio
+import json
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('checker')
 
@@ -27,42 +28,61 @@ class ServiceTesting:
     actions: list = ["ping", "put", "get", "exploit"]
     host: str = "localhost"
     storage: FlagStorage = FlagStorage()
+    hosts: list = []
 
+    def save(self):
+        with open("hosts.json", "w") as f:
+            data = json.dumps(self.hosts)
+            f.write(data)
+    
     def run(self, functions):
+        self.hosts = [{"id":1, "host": self.host}]
+        self.save()
         for i in range(1, self.iterations):
             logger.info(f"iteration:{i}")
             for action in self.actions:
-                action_functions = functions[action]
-                for name, f in action_functions.items():
-                    self.__getattribute__(action)(f, name)
+                #print(functions)
+                for name, function in functions[action].items():
+                    wrap, data = function
+                    self.__getattribute__(action)(wrap, data, name)
 
-    def ping(self, f, name):
-        answer = f(self.host)
-        if answer == "pong":
-            logger.info("ping => pong")
-        else:
-            logger.error(f"ping => {answer}")
+    def ping(self, wrap, data, name):
+        results = asyncio.run(wrap(*data)())
+        for answer in results:
+            if answer["answer"] == "pong":
+                logger.info("ping => pong")
+            else:
+                logger.error(f"ping => {answer}")
 
-    def put(self, f, name):
+    def put(self, wrap, data, name):
         flag = generate_flag()
-        _id = f(self.host, flag)
-        self.storage.add(name, flag, _id)
+        self.hosts[0]['flag'] = flag
+        self.save()
+        results = asyncio.run(wrap(*data)())
+        
+        for result in results:
+            _id = result["answer"]
+            self.storage.add(name, flag, _id)
+            logger.info(f"put:{name}({flag}) => {_id}")
 
-        logger.info(f"put:{name}({flag}) => {_id}")
-
-    def get(self, f, name):
+    def get(self, wrap, data, name):
         _id = self.storage.get(name)
-        flag = f(self.host, _id)
-        if self.storage.validate(name, flag, _id):
-            logger.info(f"get:{name}({_id}) => {flag}")
-        else:
-            logger.error(f"get:{name}({_id}) => {flag}")
+        self.hosts[0]['value'] = _id
+        self.save()
+        results = asyncio.run(wrap(*data)())
+        for result in results:
+            flag = result["answer"]
+            if self.storage.validate(name, flag, _id):
+                logger.info(f"get:{name}({_id}) => {flag}")
+            else:
+                logger.error(f"get:{name}({_id}) => {flag}")
 
-    def exploit(self, f, name):
-        result = f(self.host)
-        if result == 1:
-           logger.info(f"exploit:{name} => exploitable") 
-        elif result == 0:
-            logger.info(f"exploit:{name} => not exploitable") 
-        else:
-            logger.error(f"exploit:{name} => {result}") 
+    def exploit(self, wrap, data, name):
+        results = asyncio.run(wrap(*data)())
+        for result in results:
+            if result["answer"] == "yes":
+                logger.info(f"exploit:{name} => exploitable") 
+            elif result["answer"] == "no":
+                logger.info(f"exploit:{name} => not exploitable") 
+            else:
+                logger.error(f"exploit:{name} => {result}") 
