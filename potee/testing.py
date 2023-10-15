@@ -26,7 +26,7 @@ class FlagStorage:
 class ServiceTesting:
     iterations: int = 3
     actions: list = ["ping", "put", "get", "exploit"]
-    host: str = "localhost"
+    host: str = "127.0.0.1"
     storage: FlagStorage = FlagStorage()
     hosts: list = []
 

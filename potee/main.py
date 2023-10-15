@@ -2,7 +2,7 @@ from collections import defaultdict
 from typing import Any
 from .testing import ServiceTesting
 import sys
-from aiohttp import ClientSession
+from aiohttp import ClientSession, CookieJar
 import asyncio
 import json
 
@@ -56,7 +56,7 @@ class Checker:
         tasks = []
 
         async def decorator():
-            async with ClientSession() as session:
+            async with ClientSession(cookie_jar=CookieJar(unsafe=True)) as session:
                 for host in data:
                     if action == "ping" or action == "exploit":
                         func = self.add_id(f, host.get("id"), session, host.get("host"))
